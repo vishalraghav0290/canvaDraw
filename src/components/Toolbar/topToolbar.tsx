@@ -16,7 +16,7 @@ export default function TopBar() {
   ] as const;
 
   return (
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 bg-white rounded-lg shadow-md border border-gray-200 z-10">
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 bg-white rounded-lg shadow-md border border-gray-200 z-10">
       {tools.map((tool) => (
         <button
           key={tool.id}
