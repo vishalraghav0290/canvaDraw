@@ -1,4 +1,5 @@
 import { useRef, useEffect, useReducer } from 'react';
+ import {useCanvasStore} from "../../store/canvasStore"
 
 
 
@@ -8,8 +9,12 @@ export default function Canvas() {
   // We use useRef instead of useState for isDrawing. 
   // useState causes React to re-render, which would make drawing laggy and slow!
   const isDrawing = useRef(false);
-  const masterArray=useRef([]); // this array store down the history of the strokes 
-  const currentStroke=useRef([]);// this array store down the current strokes only 
+ 
+  // pulling out the value form the store 
+   const masterArray =useCanvasStore((state)=>state.masterArray);
+   const addPointToCurrent = useCanvasStore((state)=> state.addPointToCurrent);
+   const finishStroke = useCanvasStore((state)=> state.finishStroke);
+
 
   const redrawCanvas = () => {
     const canvas = canvasRef.current;
@@ -21,7 +26,7 @@ export default function Canvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // 2. Loop through every stroke in our master history
-    masterArray.current.forEach((stroke) => {
+    masterArray.forEach((stroke) => {
       if (stroke.length === 0) return;
 
       // 3. Draw this specific stroke
@@ -38,6 +43,8 @@ export default function Canvas() {
     });
   };
 
+
+  useEffect(()=>{redrawCanvas()},[masterArray]); // this for whenever there is change in mastere array the cnavas got redraw
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -71,8 +78,7 @@ export default function Canvas() {
     ctx.beginPath(); // Tells canvas "start a brand new line here"
     ctx.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY); // Move the invisible pen to the cursor
     isDrawing.current = true;
-        currentStroke.current=[];
-        currentStroke.current.push({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY })
+    addPointToCurrent({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY })
   };
 
   // 2. Drag (Draw the line)
@@ -86,7 +92,7 @@ export default function Canvas() {
     if (!ctx) return;
 
     ctx.lineTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);  // Draw a path to the new mouse position
-    currentStroke.current.push({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
+    addPointToCurrent({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
     ctx.stroke(); // Actually fill the path with ink so we can see it
   };
 
@@ -94,7 +100,7 @@ export default function Canvas() {
   const stopDrawing = () => {
     if(!isDrawing.current)return; 
     isDrawing.current = false;
-    masterArray.current.push(currentStroke.current);
+    finishStroke();
   };
 
 
