@@ -1,28 +1,50 @@
-import Canvas from "../components/Canvas/Canvas";
+import { create} from "zustand";
 
-export const redrawCanvas = (Canvas) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
 
-    // 1. Wipe the screen clean!
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+type Point = {x: number , y: number};
+type stroke =Point[];
 
-    // 2. Loop through every stroke in our master history
-    masterArray.current.forEach((stroke) => {
-      if (stroke.length === 0) return;
+interface CanvasStore {
+    masterArray: stroke[];
+    currentStroke: stroke;
 
-      // 3. Draw this specific stroke
-      ctx.beginPath();
-      // Move pen to the very first point of this stroke
-      ctx.moveTo(stroke[0].x, stroke[0].y); 
+    addPointToCurrent: (point:Point)=>void;
+    finishStroke: ()=>void;
+    undo : ()=>void;
+    clearCanvas: ()=>void;
+}
 
-      // Trace the line through all the remaining points
-      for (let i = 1; i < stroke.length; i++) {
-        ctx.lineTo(stroke[i].x, stroke[i].y);
-      }
-      
-      ctx.stroke(); // Apply the ink!
-    });
-  };
+
+export const useCanvasStore = create<CanvasStore>((set)=>({
+    masterArray: [],
+  currentStroke: [],
+
+  
+  addPointToCurrent: (point) => 
+    set((state) => ({
+      currentStroke: [...state.currentStroke, point]
+    })),
+
+  
+  finishStroke: () => 
+    set((state) => {
+      if (state.currentStroke.length === 0) return state; 
+      return {
+        masterArray: [...state.masterArray, state.currentStroke],
+        currentStroke: []
+      };
+    }),
+
+  
+  undo: () => 
+    set((state) => ({
+      masterArray: state.masterArray.slice(0, -1) 
+      // it working like [[{},{},{}] , [{},{}] , [{}]] it remove last value which in itelsf tis the array
+    })),
+
+  // 4. Wipes everything
+  clearCanvas: () => set({ masterArray: [], currentStroke: [] }),
+
+}))
+
+
