@@ -1,21 +1,43 @@
 import { useRef, useEffect } from 'react';
-import { useCanvasStore, useCameraCanavasState } from "../../store/canvasStore";
+import { useCanvasStore, useCameraCanavasState, type CanvasElement } from "../../store/canvasStore";
 import { getScreenToWorld } from '../../utils/math';
 
 export default function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const isDrawing = useRef(false);
   const isPanning = useRef(false);
   const isSpacePressed = useRef(false);
   const lastPanPosition = useRef({ x: 0, y: 0 });
 
-  const masterArray = useCanvasStore((state) => state.masterArray);
-  const addPointToCurrent = useCanvasStore((state) => state.addPointToCurrent);
-  const finishStroke = useCanvasStore((state) => state.finishStroke);
-
+  const elements = useCanvasStore((state) => state.elements);
+  const currentElement = useCanvasStore((state) => state.currentElement);
+  
   const cameraOffset = useCameraCanavasState((state) => state.cameraOffset);
   const cameraZoom = useCameraCanavasState((state) => state.cameraZoom);
-  const setCameraOffset = useCameraCanavasState((state) => state.setCameraOffset);
+
+  const drawShape = (ctx: CanvasRenderingContext2D, element: CanvasElement) => {
+    ctx.beginPath();
+    ctx.strokeStyle = element.strokeColor || '#000000';
+    ctx.lineWidth = element.strokeWidth || 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (element.type === 'freehand' || element.type === 'line') {
+      if (!element.points.length) return;
+      ctx.moveTo(element.points[0].x, element.points[0].y);
+      for (let i = 1; i < element.points.length; i++) {
+        ctx.lineTo(element.points[i].x, element.points[i].y);
+      }
+    } else if (element.type === 'rectangle') {
+      ctx.rect(element.x, element.y, element.width, element.height);
+    } else if (element.type === 'ellipse') {
+      const rx = Math.abs(element.width / 2);
+      const ry = Math.abs(element.height / 2);
+      const cx = element.x + element.width / 2;
+      const cy = element.y + element.height / 2;
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
+    }
+    ctx.stroke();
+  };
 
   const redrawCanvas = () => {
     const canvas = canvasRef.current;
@@ -23,7 +45,7 @@ export default function Canvas() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const { masterArray } = useCanvasStore.getState();
+    const { elements, currentElement } = useCanvasStore.getState();
     const { cameraOffset, cameraZoom } = useCameraCanavasState.getState();
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -31,22 +53,15 @@ export default function Canvas() {
     ctx.translate(cameraOffset.x, cameraOffset.y);
     ctx.scale(cameraZoom, cameraZoom);
 
-    masterArray.forEach((stroke) => {
-      if (stroke.length === 0) return;
-      ctx.beginPath();
-      ctx.moveTo(stroke[0].x, stroke[0].y);
-      for (let i = 1; i < stroke.length; i++) {
-        ctx.lineTo(stroke[i].x, stroke[i].y);
-      }
-      ctx.stroke();
-    });
+    elements.forEach((el) => drawShape(ctx, el));
+    if (currentElement) drawShape(ctx, currentElement);
 
     ctx.restore();
   };
 
   useEffect(() => {
     redrawCanvas();
-  }, [masterArray, cameraOffset, cameraZoom]);
+  }, [elements, currentElement, cameraOffset, cameraZoom]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -54,18 +69,13 @@ export default function Canvas() {
 
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
-
       const { cameraZoom, cameraOffset, setCameraZoom, setCameraOffset } = useCameraCanavasState.getState();
-
-      const zoomSensitivity = 0.5;
-      const zoomFactor = Math.exp(-e.deltaY * zoomSensitivity);
+      
+      const zoomFactor = Math.exp(-e.deltaY * 0.001);
       const newZoom = Math.min(Math.max(cameraZoom * zoomFactor, 0.1), 30);
-
-      const mouseX = e.offsetX;
-      const mouseY = e.offsetY;
-
-      const newOffsetX = mouseX - ((mouseX - cameraOffset.x) / cameraZoom) * newZoom;
-      const newOffsetY = mouseY - ((mouseY - cameraOffset.y) / cameraZoom) * newZoom;
+      
+      const newOffsetX = e.offsetX - ((e.offsetX - cameraOffset.x) / cameraZoom) * newZoom;
+      const newOffsetY = e.offsetY - ((e.offsetY - cameraOffset.y) / cameraZoom) * newZoom;
 
       setCameraZoom(newZoom);
       setCameraOffset(newOffsetX, newOffsetY);
@@ -98,29 +108,22 @@ export default function Canvas() {
   }, []);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
     const resizeCanvas = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.lineWidth = 3;
+      if (canvasRef.current) {
+        canvasRef.current.width = window.innerWidth;
+        canvasRef.current.height = window.innerHeight;
+        redrawCanvas();
       }
-      redrawCanvas();
     };
-
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
     return () => window.removeEventListener('resize', resizeCanvas);
   }, []);
 
   const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (e.button === 1 || isSpacePressed.current) {
+    const { currentTool } = useCanvasStore.getState();
+
+    if (e.button === 1 || isSpacePressed.current || currentTool === 'pan') {
       isPanning.current = true;
       lastPanPosition.current = { x: e.clientX, y: e.clientY };
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -128,50 +131,57 @@ export default function Canvas() {
       return;
     }
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (currentTool === 'select') return;
 
     const { cameraOffset, cameraZoom } = useCameraCanavasState.getState();
     const worldCoords = getScreenToWorld(e.nativeEvent.offsetX, e.nativeEvent.offsetY, cameraOffset, cameraZoom);
 
-    ctx.save();
-    ctx.translate(cameraOffset.x, cameraOffset.y);
-    ctx.scale(cameraZoom, cameraZoom);
+    const newElement: CanvasElement = {
+      id: Date.now().toString(),
+      type: currentTool as 'freehand' | 'rectangle' | 'ellipse' | 'line',
+      x: worldCoords.x,
+      y: worldCoords.y,
+      width: 0,
+      height: 0,
+      points: [worldCoords],
+      strokeColor: '#000000',
+      strokeWidth: 3
+    };
 
-    ctx.beginPath();
-    ctx.moveTo(worldCoords.x, worldCoords.y);
-
-    isDrawing.current = true;
-    addPointToCurrent(worldCoords);
+    useCanvasStore.getState().setCurrentElement(newElement);
   };
 
   const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (isPanning.current) {
       const deltaX = e.clientX - lastPanPosition.current.x;
       const deltaY = e.clientY - lastPanPosition.current.y;
-
-      const currentOffset = useCameraCanavasState.getState().cameraOffset;
-      setCameraOffset(currentOffset.x + deltaX, currentOffset.y + deltaY);
-
+      const { cameraOffset, setCameraOffset } = useCameraCanavasState.getState();
+      
+      setCameraOffset(cameraOffset.x + deltaX, cameraOffset.y + deltaY);
       lastPanPosition.current = { x: e.clientX, y: e.clientY };
       return;
     }
 
-    if (!isDrawing.current) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const currentEl = useCanvasStore.getState().currentElement;
+    if (!currentEl) return;
 
     const { cameraOffset, cameraZoom } = useCameraCanavasState.getState();
     const worldCoords = getScreenToWorld(e.nativeEvent.offsetX, e.nativeEvent.offsetY, cameraOffset, cameraZoom);
 
-    ctx.lineTo(worldCoords.x, worldCoords.y);
-    ctx.stroke();
+    const updatedElement = { ...currentEl };
 
-    addPointToCurrent(worldCoords);
+    if (updatedElement.type === 'freehand') {
+      updatedElement.points = [...updatedElement.points, worldCoords];
+    } else {
+      updatedElement.width = worldCoords.x - updatedElement.x;
+      updatedElement.height = worldCoords.y - updatedElement.y;
+      
+      if (updatedElement.type === 'line') {
+        updatedElement.points = [updatedElement.points[0], worldCoords];
+      }
+    }
+
+    useCanvasStore.getState().setCurrentElement(updatedElement);
   };
 
   const stopDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -186,13 +196,10 @@ export default function Canvas() {
       return;
     }
 
-    if (!isDrawing.current) return;
-    isDrawing.current = false;
-
-    const canvas = canvasRef.current;
-    if (canvas) canvas.getContext('2d')?.restore();
-
-    finishStroke();
+    const currentEl = useCanvasStore.getState().currentElement;
+    if (currentEl) {
+      useCanvasStore.getState().addElement(currentEl);
+    }
   };
 
   return (

@@ -1,90 +1,12 @@
-import { create} from "zustand";
+import { create } from "zustand";
 
+export type Point = { x: number; y: number };
 
-type Point = {x: number , y: number};
-type stroke =Point[];
-
-interface CanvasStore {
-    masterArray: stroke[];
-    currentStroke: stroke;
-
-    addPointToCurrent: (point:Point)=>void;
-    finishStroke: ()=>void;
-    undo : ()=>void;
-    clearCanvas: ()=>void;
-}
-
-
-export const useCanvasStore = create<CanvasStore>((set)=>({
-    masterArray: [],
-  currentStroke: [],
-
-  
-  addPointToCurrent: (point) => 
-    set((state) => ({
-      currentStroke: [...state.currentStroke, point]
-    })),
-
-  
-  finishStroke: () => 
-    set((state) => {
-      if (state.currentStroke.length === 0) return state; 
-      return {
-        masterArray: [...state.masterArray, state.currentStroke],
-        currentStroke: []
-      };
-    }),
-
-  
-  undo: () => 
-    set((state) => ({
-      masterArray: state.masterArray.slice(0, -1) 
-      // it working like [[{},{},{}] , [{},{}] , [{}]] it remove last value which in itelsf tis the array
-    })),
-
-  // 4. Wipes everything
-  clearCanvas: () => set({ masterArray: [], currentStroke: [] }),
-
-}))
-
-
-//---------------------------------------------------------------------------------------//
-
-
-
-// Add to your types
-interface CanvasState {
-  // ... existing states
-  cameraOffset: { x: number; y: number };
-  cameraZoom: number;
-  
-  // ... existing actions
-  setCameraOffset: (x: number, y: number) => void;
-  setCameraZoom: (zoom: number) => void;
-}
-
-// Add inside create()
-export const useCameraCanavasState = create<CanvasState>((set) => ({
-  // ... existing data
-  cameraOffset: { x: 0, y: 0 },
-  cameraZoom: 1, // 1 = 100%
-
-  // ... existing actions
-  setCameraOffset: (x, y) => set({ cameraOffset: { x, y } }),
-  setCameraZoom: (zoom) => set({ cameraZoom: zoom }),
-}));
-
-
-//--------------------------------------------------------------------
-
-
-
-// The new master object that can represent ANY tool
 export type CanvasElement = {
-  id: string; // Needed later for selecting/deleting specific shapes
+  id: string;
   type: 'freehand' | 'rectangle' | 'ellipse' | 'line';
-  points: Point[]; // Used for freehand or lines
-  x: number; // Used for shapes (top left corner)
+  points: Point[];
+  x: number;
   y: number;
   width: number;
   height: number;
@@ -92,10 +14,55 @@ export type CanvasElement = {
   strokeWidth: number;
 };
 
-interface CanvasShapeState {
-  elements: CanvasElement[]; // Replaces masterArray
-  currentElement: CanvasElement | null; // Replaces currentStroke
+interface CanvasStore {
+  elements: CanvasElement[];
+  currentElement: CanvasElement | null;
   currentTool: 'freehand' | 'rectangle' | 'ellipse' | 'pan' | 'select';
-  
-  // ... (keep camera states)
+
+  setElements: (elements: CanvasElement[]) => void;
+  setCurrentElement: (element: CanvasElement | null) => void;
+  setCurrentTool: (tool: 'freehand' | 'rectangle' | 'ellipse' | 'pan' | 'select') => void;
+  addElement: (element: CanvasElement) => void;
+  undo: () => void;
+  clearCanvas: () => void;
 }
+
+export const useCanvasStore = create<CanvasStore>((set) => ({
+  elements: [],
+  currentElement: null,
+  currentTool: 'freehand',
+
+  setElements: (elements) => set({ elements }),
+  setCurrentElement: (currentElement) => set({ currentElement }),
+  setCurrentTool: (currentTool) => set({ currentTool }),
+  
+  addElement: (element) =>
+    set((state) => ({
+      elements: [...state.elements, element],
+      currentElement: null,
+    })),
+
+  undo: () =>
+    set((state) => ({
+      elements: state.elements.slice(0, -1),
+    })),
+
+  clearCanvas: () => set({ elements: [], currentElement: null }),
+}));
+
+
+interface CameraState {
+  cameraOffset: { x: number; y: number };
+  cameraZoom: number;
+  
+  setCameraOffset: (x: number, y: number) => void;
+  setCameraZoom: (zoom: number) => void;
+}
+
+export const useCameraCanavasState = create<CameraState>((set) => ({
+  cameraOffset: { x: 0, y: 0 },
+  cameraZoom: 1,
+
+  setCameraOffset: (x, y) => set({ cameraOffset: { x, y } }),
+  setCameraZoom: (cameraZoom) => set({ cameraZoom }),
+}));
