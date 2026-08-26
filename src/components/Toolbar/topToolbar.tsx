@@ -5,6 +5,9 @@ export default function TopBar() {
   const setCurrentTool = useCanvasStore((state) => state.setCurrentTool);
   const undo = useCanvasStore((state) => state.undo);
   const clearCanvas = useCanvasStore((state) => state.clearCanvas);
+  const theme = useCanvasStore((state) => state.theme);
+  const toggleTheme = useCanvasStore((state) => state.toggleTheme);
+  
 
   const tools = [
     { id: 'select', label: '👆 Select' },
@@ -39,6 +42,12 @@ export default function TopBar() {
       <button onClick={clearCanvas} className="px-3 py-1.5 rounded-md text-sm font-medium text-red-600 hover:bg-red-50">
         🗑️ Clear
       </button>
+      <div className={`w-px h-6 mx-1 ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300'}`} />
+
+      <button onClick={toggleTheme} className={`p-1.5 rounded-md ${theme === 'dark' ? 'hover:bg-gray-700 text-yellow-400' : 'hover:bg-gray-100 text-gray-700'}`}>
+        {theme === 'dark' ? '☀️' : '🌙'}
+      </button>
+
     </div>
   );
 }

@@ -209,7 +209,7 @@ export default function Canvas() {
       onPointerMove={draw}
       onPointerUp={stopDrawing}
       onPointerOut={stopDrawing}
-      style={{ display: 'block', touchAction: 'none', backgroundColor: '#e5e5e5' }}
+      style={{ display: 'block', touchAction: 'none' }}
     />
   );
 }

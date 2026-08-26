@@ -15,10 +15,12 @@ export type CanvasElement = {
 };
 
 interface CanvasStore {
+  theme:'light'| 'dark';
   elements: CanvasElement[];
   currentElement: CanvasElement | null;
   currentTool: 'freehand' | 'rectangle' | 'ellipse' | 'pan' | 'select';
-
+  
+  toggleTheme:()=>void;
   setElements: (elements: CanvasElement[]) => void;
   setCurrentElement: (element: CanvasElement | null) => void;
   setCurrentTool: (tool: 'freehand' | 'rectangle' | 'ellipse' | 'pan' | 'select') => void;
@@ -28,11 +30,15 @@ interface CanvasStore {
 }
 
 export const useCanvasStore = create<CanvasStore>((set) => ({
+  theme:'light',
   elements: [],
   currentElement: null,
   currentTool: 'freehand',
 
   setElements: (elements) => set({ elements }),
+  toggleTheme() {
+      set((state)=>({theme: state.theme === "light" ? "dark" : "light"}));
+  },
   setCurrentElement: (currentElement) => set({ currentElement }),
   setCurrentTool: (currentTool) => set({ currentTool }),
   
