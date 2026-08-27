@@ -66,4 +66,5 @@ export const exportToPNG = (elements: CanvasElement[]) => {
     link.download = `whiteboard-${Date.now()}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
+    //javascript code to download the image
 };
