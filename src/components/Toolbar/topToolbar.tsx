@@ -1,4 +1,5 @@
 import { useCanvasStore } from "../../store/canvasStore";
+import { exportToPNG } from "../../utils/export";
 
 export default function TopBar() {
   const currentTool = useCanvasStore((state) => state.currentTool);
@@ -9,6 +10,8 @@ export default function TopBar() {
   const toggleTheme = useCanvasStore((state) => state.toggleTheme);
   const strokeColor = useCanvasStore((state) => state.strokeColor);
   const setStrokeColor = useCanvasStore((state) => state.setStrokeColor);
+  const elements = useCanvasStore((state) => state.elements);
+
 
 
   const tools = [
@@ -27,8 +30,8 @@ export default function TopBar() {
           key={tool.id}
           onClick={() => setCurrentTool(tool.id)}
           className={`px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${currentTool === tool.id
-              ? 'bg-blue-100 text-blue-700'
-              : 'hover:bg-gray-100 text-gray-700'
+            ? 'bg-blue-100 text-blue-700'
+            : 'hover:bg-gray-100 text-gray-700'
             }`}
         >
           <span>{tool.icon}</span>
@@ -65,6 +68,14 @@ export default function TopBar() {
 
       <button onClick={toggleTheme} className={`p-1.5 rounded-md ${theme === 'dark' ? 'hover:bg-gray-700 text-yellow-400' : 'hover:bg-gray-100 text-gray-700'}`}>
         {theme === 'dark' ? '☀️' : '🌙'}
+      </button>
+      <div className={`w-px h-6 mx-1 ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300'}`} />
+
+      <button
+        onClick={() => exportToPNG(elements)}
+        className={`px-3 py-1.5 rounded-md text-sm font-medium ${theme === 'dark' ? 'text-green-400 hover:bg-gray-700' : 'text-green-700 hover:bg-green-50'}`}
+      >
+        💾 Export
       </button>
 
     </div>
