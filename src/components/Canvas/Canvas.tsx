@@ -1,20 +1,21 @@
-import { useRef, useEffect, useReducer } from 'react';
- import {useCanvasStore} from "../../store/canvasStore"
-
-
+import { useRef, useEffect } from 'react';
+import { useCanvasStore, useCameraCanavasState } from "../../store/canvasStore";
+import { getScreenToWorld } from '../../utils/math';
 
 export default function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  
-  // We use useRef instead of useState for isDrawing. 
-  // useState causes React to re-render, which would make drawing laggy and slow!
   const isDrawing = useRef(false);
- 
-  // pulling out the value form the store 
-   const masterArray =useCanvasStore((state)=>state.masterArray);
-   const addPointToCurrent = useCanvasStore((state)=> state.addPointToCurrent);
-   const finishStroke = useCanvasStore((state)=> state.finishStroke);
+  const isPanning = useRef(false);
+  const isSpacePressed = useRef(false);
+  const lastPanPosition = useRef({ x: 0, y: 0 });
 
+  const masterArray = useCanvasStore((state) => state.masterArray);
+  const addPointToCurrent = useCanvasStore((state) => state.addPointToCurrent);
+  const finishStroke = useCanvasStore((state) => state.finishStroke);
+
+  const cameraOffset = useCameraCanavasState((state) => state.cameraOffset);
+  const cameraZoom = useCameraCanavasState((state) => state.cameraZoom);
+  const setCameraOffset = useCameraCanavasState((state) => state.setCameraOffset);
 
   const redrawCanvas = () => {
     const canvas = canvasRef.current;
@@ -22,29 +23,79 @@ export default function Canvas() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 1. Wipe the screen clean!
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const { masterArray } = useCanvasStore.getState();
+    const { cameraOffset, cameraZoom } = useCameraCanavasState.getState();
 
-    // 2. Loop through every stroke in our master history
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(cameraOffset.x, cameraOffset.y);
+    ctx.scale(cameraZoom, cameraZoom);
+
     masterArray.forEach((stroke) => {
       if (stroke.length === 0) return;
-
-      // 3. Draw this specific stroke
       ctx.beginPath();
-      // Move pen to the very first point of this stroke
-      ctx.moveTo(stroke[0].x, stroke[0].y); 
-
-      // Trace the line through all the remaining points
+      ctx.moveTo(stroke[0].x, stroke[0].y);
       for (let i = 1; i < stroke.length; i++) {
         ctx.lineTo(stroke[i].x, stroke[i].y);
       }
-      
-      ctx.stroke(); // Apply the ink!
+      ctx.stroke();
     });
+
+    ctx.restore();
   };
 
+  useEffect(() => {
+    redrawCanvas();
+  }, [masterArray, cameraOffset, cameraZoom]);
 
-  useEffect(()=>{redrawCanvas()},[masterArray]); // this for whenever there is change in mastere array the cnavas got redraw
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+
+      const { cameraZoom, cameraOffset, setCameraZoom, setCameraOffset } = useCameraCanavasState.getState();
+
+      const zoomSensitivity = 0.5;
+      const zoomFactor = Math.exp(-e.deltaY * zoomSensitivity);
+      const newZoom = Math.min(Math.max(cameraZoom * zoomFactor, 0.1), 30);
+
+      const mouseX = e.offsetX;
+      const mouseY = e.offsetY;
+
+      const newOffsetX = mouseX - ((mouseX - cameraOffset.x) / cameraZoom) * newZoom;
+      const newOffsetY = mouseY - ((mouseY - cameraOffset.y) / cameraZoom) * newZoom;
+
+      setCameraZoom(newZoom);
+      setCameraOffset(newOffsetX, newOffsetY);
+    };
+
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !isSpacePressed.current) {
+        isSpacePressed.current = true;
+        if (canvasRef.current) canvasRef.current.style.cursor = 'grab';
+      }
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        isSpacePressed.current = false;
+        if (canvasRef.current) canvasRef.current.style.cursor = 'default';
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -53,62 +104,96 @@ export default function Canvas() {
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      
+
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        // Set basic pen settings
-        ctx.lineCap = 'round'; // Makes line ends smooth
-        ctx.lineJoin = 'round'; // Makes corners smooth
-        ctx.lineWidth = 3; // Thickness of the line
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = 3;
       }
-          redrawCanvas();
+      redrawCanvas();
     };
-  resizeCanvas();
+
+    resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
     return () => window.removeEventListener('resize', resizeCanvas);
   }, []);
 
-  // 1. Press down (Start drawing)
   const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.button === 1 || isSpacePressed.current) {
+      isPanning.current = true;
+      lastPanPosition.current = { x: e.clientX, y: e.clientY };
+      e.currentTarget.setPointerCapture(e.pointerId);
+      if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing';
+      return;
+    }
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.beginPath(); // Tells canvas "start a brand new line here"
-    ctx.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY); // Move the invisible pen to the cursor
+    const { cameraOffset, cameraZoom } = useCameraCanavasState.getState();
+    const worldCoords = getScreenToWorld(e.nativeEvent.offsetX, e.nativeEvent.offsetY, cameraOffset, cameraZoom);
+
+    ctx.save();
+    ctx.translate(cameraOffset.x, cameraOffset.y);
+    ctx.scale(cameraZoom, cameraZoom);
+
+    ctx.beginPath();
+    ctx.moveTo(worldCoords.x, worldCoords.y);
+
     isDrawing.current = true;
-    addPointToCurrent({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY })
+    addPointToCurrent(worldCoords);
   };
 
-  // 2. Drag (Draw the line)
   const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawing.current) return;
+    if (isPanning.current) {
+      const deltaX = e.clientX - lastPanPosition.current.x;
+      const deltaY = e.clientY - lastPanPosition.current.y;
 
-    
+      const currentOffset = useCameraCanavasState.getState().cameraOffset;
+      setCameraOffset(currentOffset.x + deltaX, currentOffset.y + deltaY);
+
+      lastPanPosition.current = { x: e.clientX, y: e.clientY };
+      return;
+    }
+
+    if (!isDrawing.current) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.lineTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);  // Draw a path to the new mouse position
-    addPointToCurrent({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
-    ctx.stroke(); // Actually fill the path with ink so we can see it
+    const { cameraOffset, cameraZoom } = useCameraCanavasState.getState();
+    const worldCoords = getScreenToWorld(e.nativeEvent.offsetX, e.nativeEvent.offsetY, cameraOffset, cameraZoom);
+
+    ctx.lineTo(worldCoords.x, worldCoords.y);
+    ctx.stroke();
+
+    addPointToCurrent(worldCoords);
   };
 
-  // 3. Lift up (Stop drawing)
-  const stopDrawing = () => {
-    if(!isDrawing.current)return; 
+  const stopDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (isPanning.current) {
+      isPanning.current = false;
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {}
+      if (canvasRef.current) {
+        canvasRef.current.style.cursor = isSpacePressed.current ? 'grab' : 'default';
+      }
+      return;
+    }
+
+    if (!isDrawing.current) return;
     isDrawing.current = false;
+
+    const canvas = canvasRef.current;
+    if (canvas) canvas.getContext('2d')?.restore();
+
     finishStroke();
   };
-
-
-
-
-
-  
-
 
   return (
     <canvas
@@ -116,10 +201,8 @@ export default function Canvas() {
       onPointerDown={startDrawing}
       onPointerMove={draw}
       onPointerUp={stopDrawing}
-      onPointerOut={stopDrawing} // Also stop if the mouse accidentally leaves the screen
+      onPointerOut={stopDrawing}
       style={{ display: 'block', touchAction: 'none', backgroundColor: '#e5e5e5' }}
     />
   );
 }
-
-
