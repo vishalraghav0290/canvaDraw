@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { useCanvasStore, useCameraCanavasState, type CanvasElement } from "../../store/canvasStore";
 import { getScreenToWorld } from '../../utils/math';
+import { getElementBounds, isPointInBounds } from '../../utils/hittest';
 
 export default function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -10,6 +11,7 @@ export default function Canvas() {
 
   const elements = useCanvasStore((state) => state.elements);
   const currentElement = useCanvasStore((state) => state.currentElement);
+  const selectedElementId = useCanvasStore((state) => state.selectedElementId);
   
   const cameraOffset = useCameraCanavasState((state) => state.cameraOffset);
   const cameraZoom = useCameraCanavasState((state) => state.cameraZoom);
@@ -56,12 +58,34 @@ export default function Canvas() {
     elements.forEach((el) => drawShape(ctx, el));
     if (currentElement) drawShape(ctx, currentElement);
 
+    // Draw Selection Bounding Box
+    const { selectedElementId } = useCanvasStore.getState();
+    if (selectedElementId) {
+      const selectedEl = elements.find(e => e.id === selectedElementId);
+      if (selectedEl) {
+        const bounds = getElementBounds(selectedEl);
+        ctx.save();
+        ctx.strokeStyle = '#3b82f6'; // Tailwind blue-500
+        ctx.lineWidth = 1.5 / cameraZoom; // Keep stroke thin even when zoomed in
+        ctx.setLineDash([5 / cameraZoom, 5 / cameraZoom]); 
+        
+        // Draw the box with a 4px padding around the shape
+        ctx.strokeRect(
+          bounds.minX - 4, 
+          bounds.minY - 4, 
+          bounds.maxX - bounds.minX + 8, 
+          bounds.maxY - bounds.minY + 8
+        );
+        ctx.restore();
+      }
+    }
+
     ctx.restore();
   };
 
   useEffect(() => {
     redrawCanvas();
-  }, [elements, currentElement, cameraOffset, cameraZoom]);
+  }, [elements, currentElement, cameraOffset, cameraZoom, selectedElementId]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -131,10 +155,25 @@ export default function Canvas() {
       return;
     }
 
-    if (currentTool === 'select') return;
-
     const { cameraOffset, cameraZoom } = useCameraCanavasState.getState();
     const worldCoords = getScreenToWorld(e.nativeEvent.offsetX, e.nativeEvent.offsetY, cameraOffset, cameraZoom);
+
+    if (currentTool === 'select') {
+      const { elements, setSelectedElementId } = useCanvasStore.getState();
+      
+      // Loop backwards to select the shape that is visually on top
+      let foundId = null;
+      for (let i = elements.length - 1; i >= 0; i--) {
+        const bounds = getElementBounds(elements[i]);
+        if (isPointInBounds(worldCoords.x, worldCoords.y, bounds)) {
+          foundId = elements[i].id;
+          break;
+        }
+      }
+      
+      setSelectedElementId(foundId);
+      return; // Stop here so we don't start drawing a new shape
+    }
 
     const newElement: CanvasElement = {
       id: Date.now().toString(),

@@ -19,8 +19,8 @@ interface CanvasStore {
   elements: CanvasElement[];
   currentElement: CanvasElement | null;
   currentTool: 'freehand' | 'rectangle' | 'ellipse' | 'pan' | 'select';
-  selectedElements: string | null;
-  setSelectedElements: (id: string | null) => void;
+  selectedElementId: string | null;
+  setSelectedElementId: (id: string | null) => void;
 
   toggleTheme: () => void;
   setElements: (elements: CanvasElement[]) => void;
@@ -36,8 +36,8 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
   elements: [],
   currentElement: null,
   currentTool: 'freehand',
-  selectedElements: null,
-  setSelectedElements: (id) => set({ selectedElements: id }),
+  selectedElementId: null,
+  setSelectedElementId: (id) => set({ selectedElementId: id }),
 
   setElements: (elements) => set({ elements }),
   toggleTheme() {
