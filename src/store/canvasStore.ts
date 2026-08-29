@@ -15,12 +15,14 @@ export type CanvasElement = {
 };
 
 interface CanvasStore {
-  theme:'light'| 'dark';
+  theme: 'light' | 'dark';
   elements: CanvasElement[];
   currentElement: CanvasElement | null;
   currentTool: 'freehand' | 'rectangle' | 'ellipse' | 'pan' | 'select';
-  
-  toggleTheme:()=>void;
+  selectedElements: string | null;
+  setSelectedElements: (id: string | null) => void;
+
+  toggleTheme: () => void;
   setElements: (elements: CanvasElement[]) => void;
   setCurrentElement: (element: CanvasElement | null) => void;
   setCurrentTool: (tool: 'freehand' | 'rectangle' | 'ellipse' | 'pan' | 'select') => void;
@@ -30,18 +32,20 @@ interface CanvasStore {
 }
 
 export const useCanvasStore = create<CanvasStore>((set) => ({
-  theme:'light',
+  theme: 'light',
   elements: [],
   currentElement: null,
   currentTool: 'freehand',
+  selectedElements: null,
+  setSelectedElements: (id) => set({ selectedElements: id }),
 
   setElements: (elements) => set({ elements }),
   toggleTheme() {
-      set((state)=>({theme: state.theme === "light" ? "dark" : "light"}));
+    set((state) => ({ theme: state.theme === "light" ? "dark" : "light" }));
   },
   setCurrentElement: (currentElement) => set({ currentElement }),
   setCurrentTool: (currentTool) => set({ currentTool }),
-  
+
   addElement: (element) =>
     set((state) => ({
       elements: [...state.elements, element],
@@ -60,7 +64,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
 interface CameraState {
   cameraOffset: { x: number; y: number };
   cameraZoom: number;
-  
+
   setCameraOffset: (x: number, y: number) => void;
   setCameraZoom: (zoom: number) => void;
 }
