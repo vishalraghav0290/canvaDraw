@@ -1,84 +1,80 @@
 import { useCanvasStore } from "../../store/canvasStore";
-import { exportToPNG } from "../../utils/export";
+import type { ToolType } from "../../store/canvasStore";
+
+const Icon = ({ src, alt, active }: { src: string; alt: string; active?: boolean }) => (
+  <img
+    src={src}
+    alt={alt}
+    width={18}
+    height={18}
+    draggable={false}
+    style={
+      active
+        ? { filter: 'invert(36%) sepia(76%) saturate(1352%) hue-rotate(200deg) brightness(97%) contrast(97%)' }
+        : { opacity: 0.65 }
+    }
+  />
+);
+
+const tools: { id: ToolType; icon: string; label: string }[] = [
+  { id: 'select',    icon: '/icons/select.svg',    label: 'Selection' },
+  { id: 'pan',       icon: '/icons/pan.svg',       label: 'Pan'       },
+  { id: 'freehand',  icon: '/icons/freehand.svg',  label: 'Draw'      },
+  { id: 'eraser',    icon: '/icons/eraser.svg',    label: 'Eraser'    },
+  { id: 'rectangle', icon: '/icons/rectangle.svg', label: 'Rectangle' },
+  { id: 'ellipse',   icon: '/icons/ellipse.svg',   label: 'Ellipse'   },
+  { id: 'line',      icon: '/icons/line.svg',      label: 'Line'      },
+  { id: 'text',      icon: '/icons/text.svg',      label: 'Text'      },
+];
 
 export default function TopBar() {
-  const currentTool = useCanvasStore((state) => state.currentTool);
-  const setCurrentTool = useCanvasStore((state) => state.setCurrentTool);
-  const undo = useCanvasStore((state) => state.undo);
-  const clearCanvas = useCanvasStore((state) => state.clearCanvas);
-  const theme = useCanvasStore((state) => state.theme);
-  const toggleTheme = useCanvasStore((state) => state.toggleTheme);
-  const strokeColor = useCanvasStore((state) => state.strokeColor);
-  const setStrokeColor = useCanvasStore((state) => state.setStrokeColor);
-  const elements = useCanvasStore((state) => state.elements);
-
-
-
-  const tools = [
-    { id: 'select', label: 'Select', icon: '👆' },
-    { id: 'pan', label: 'Pan', icon: '✋' },
-    { id: 'freehand', label: 'Draw', icon: '✏️' },
-    { id: 'rectangle', label: 'Rect', icon: '⬜' },
-    { id: 'ellipse', label: 'Ellipse', icon: '⭕' },
-    { id: 'text', label: 'T Text', icon: '' }
-  ] as const;
+  const { currentTool, setCurrentTool, theme, toggleTheme } = useCanvasStore();
+  const bgColor = theme === 'dark' ? 'bg-[#232329] border-[#313131]' : 'bg-white border-gray-200';
 
   return (
-    <div className={`flex items-center gap-1 sm:gap-2 p-1.5 sm:p-2 rounded-lg shadow-md border transition-colors flex-nowrap ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-      }`}>
-      {tools.map((tool) => (
+    <div className={`flex items-center gap-1 p-1.5 rounded-xl border shadow-sm ${bgColor}`}>
+      {tools.map((tool) => {
+        const isActive = currentTool === tool.id;
+        return (
+          <div key={tool.id} className="relative group">
+            <button
+              onClick={() => setCurrentTool(tool.id)}
+              title={tool.label}
+              className={`p-2 rounded-lg transition-colors flex items-center justify-center ${
+                isActive ? 'bg-blue-500/20' : 'hover:bg-gray-500/10'
+              }`}
+            >
+              <Icon src={tool.icon} alt={tool.label} active={isActive} />
+            </button>
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg">
+              {tool.label}
+            </div>
+          </div>
+        );
+      })}
+
+      <div className="w-px h-6 bg-gray-500/20 mx-1" />
+
+      {/* Theme toggle with SVG icons instead of emoji */}
+      <div className="relative group">
         <button
-          key={tool.id}
-          onClick={() => { console.log('[TOOLBAR] setCurrentTool:', tool.id); setCurrentTool(tool.id); }}
-          className={`px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${currentTool === tool.id
-            ? 'bg-blue-100 text-blue-700'
-            : 'hover:bg-gray-100 text-gray-700'
-            }`}
+          onClick={toggleTheme}
+          className="p-2 rounded-lg hover:bg-gray-500/10 transition-colors flex items-center justify-center"
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
         >
-          <span>{tool.icon}</span>
-          <span className="hidden sm:inline">{tool.label}</span>
+          <img
+            src={theme === 'dark' ? '/icons/sun.svg' : '/icons/moon.svg'}
+            alt={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            width={18}
+            height={18}
+            draggable={false}
+            style={{ opacity: 0.65 }}
+          />
         </button>
-      ))}
-      <input
-        type="color"
-        value={strokeColor}
-        onChange={(e) => setStrokeColor(e.target.value)}
-        className="w-8 h-8 border-none bg-transparent cursor-pointer"
-        title="Change Color"
-      />
-
-
-      <div className="w-px h-6 bg-gray-300 mx-0.5 sm:mx-1" />
-
-      <button
-        onClick={undo}
-        className="px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 flex items-center gap-1.5"
-      >
-        <span>↩️</span>
-        <span className="hidden sm:inline">Undo</span>
-      </button>
-      <button
-        onClick={clearCanvas}
-        className="px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium text-red-600 hover:bg-red-50 flex items-center gap-1.5"
-      >
-        <span>🗑️</span>
-        <span className="hidden sm:inline">Clear</span>
-      </button>
-
-      <div className={`w-px h-6 mx-0.5 sm:mx-1 ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300'}`} />
-
-      <button onClick={toggleTheme} className={`p-1.5 rounded-md ${theme === 'dark' ? 'hover:bg-gray-700 text-yellow-400' : 'hover:bg-gray-100 text-gray-700'}`}>
-        {theme === 'dark' ? '☀️' : '🌙'}
-      </button>
-      <div className={`w-px h-6 mx-1 ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300'}`} />
-
-      <button
-        onClick={() => exportToPNG(elements)}
-        className={`px-3 py-1.5 rounded-md text-sm font-medium ${theme === 'dark' ? 'text-green-400 hover:bg-gray-700' : 'text-green-700 hover:bg-green-50'}`}
-      >
-        💾 Export
-      </button>
-
+        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg">
+          {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+        </div>
+      </div>
     </div>
   );
 }

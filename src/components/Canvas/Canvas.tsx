@@ -280,7 +280,7 @@ export default function Canvas() {
   }, []);
 
   const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const { currentTool, strokeColor } = useCanvasStore.getState();
+    const { currentTool, strokeColor, strokeWidth } = useCanvasStore.getState();
 
     if (e.button === 1 || isSpacePressed.current || currentTool === 'pan') {
       isPanning.current = true;
@@ -335,8 +335,23 @@ export default function Canvas() {
       return; // Stop here so we don't start drawing a new shape
     }
 
+    if (currentTool === 'eraser') {
+      const { elements, deleteElement } = useCanvasStore.getState();
+      const { cameraOffset: co, cameraZoom: cz } = useCameraCanavasState.getState();
+      const wc = getScreenToWorld(e.nativeEvent.offsetX, e.nativeEvent.offsetY, co, cz);
+      const eraseRadius = (useCanvasStore.getState().strokeWidth * 4) / cz;
+      elements.forEach(el => {
+        const b = getElementBounds(el);
+        if (wc.x >= b.minX - eraseRadius && wc.x <= b.maxX + eraseRadius &&
+            wc.y >= b.minY - eraseRadius && wc.y <= b.maxY + eraseRadius) {
+          deleteElement(el.id);
+        }
+      });
+      e.currentTarget.setPointerCapture(e.pointerId);
+      return;
+    }
+
     if (currentTool === 'text') {
-      console.log('[TEXT] spawning vanilla textarea at screen:', e.clientX, e.clientY);
       spawnTextInput(e.clientX, e.clientY, worldCoords.x, worldCoords.y);
       return;
     }
@@ -350,7 +365,7 @@ export default function Canvas() {
       height: 0,
       points: [worldCoords],
       strokeColor: strokeColor,
-      strokeWidth: 3
+      strokeWidth: strokeWidth
     };
 
     useCanvasStore.getState().setCurrentElement(newElement);
@@ -368,6 +383,22 @@ export default function Canvas() {
     }
 
     const { currentTool, selectedElementId, elements, updateElement } = useCanvasStore.getState();
+
+    // ERASER: delete elements under cursor while dragging
+    if (currentTool === 'eraser') {
+      const { cameraOffset: co, cameraZoom: cz } = useCameraCanavasState.getState();
+      const wc = getScreenToWorld(e.nativeEvent.offsetX, e.nativeEvent.offsetY, co, cz);
+      const eraseRadius = (useCanvasStore.getState().strokeWidth * 4) / cz;
+      const { elements: els, deleteElement } = useCanvasStore.getState();
+      els.forEach(el => {
+        const b = getElementBounds(el);
+        if (wc.x >= b.minX - eraseRadius && wc.x <= b.maxX + eraseRadius &&
+            wc.y >= b.minY - eraseRadius && wc.y <= b.maxY + eraseRadius) {
+          deleteElement(el.id);
+        }
+      });
+      return;
+    }
 
     // NEW: RESIZE SHAPE LOGIC
     if (currentTool === 'select' && isResizing.current && selectedElementId) {
