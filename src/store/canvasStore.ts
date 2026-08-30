@@ -20,10 +20,13 @@ interface CanvasStore {
   currentElement: CanvasElement | null;
   currentTool: 'freehand' | 'rectangle' | 'ellipse' | 'pan' | 'select';
   selectedElementId: string | null;
+  strokeColor: string,
+  setStrokeColor: (color: string) => void;
+
+
+
   deleteElement: (id: string) => void
   updateElement: (id: string, newElement: CanvasElement) => void;
-
-
   toggleTheme: () => void;
   setElements: (elements: CanvasElement[]) => void;
   setCurrentElement: (element: CanvasElement | null) => void;
@@ -40,6 +43,17 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
   currentElement: null,
   currentTool: 'freehand',
   selectedElementId: null,
+
+
+  strokeColor: '#000000',
+  setStrokeColor: (color: string) => set((state) => ({
+    strokeColor: color,
+
+    elements: state.selectedElementId
+      ? state.elements.map(el => el.id === state.selectedElementId ? { ...el, strokeColor: color } : el)
+      : state.elements
+  })),
+
   setSelectedElementId: (id) => set({ selectedElementId: id }),
 
   deleteElement: (id) => set((state) => ({

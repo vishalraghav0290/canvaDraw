@@ -167,7 +167,7 @@ export default function Canvas() {
   }, []);
 
   const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const { currentTool } = useCanvasStore.getState();
+    const { currentTool, strokeColor } = useCanvasStore.getState();
 
     if (e.button === 1 || isSpacePressed.current || currentTool === 'pan') {
       isPanning.current = true;
@@ -230,7 +230,7 @@ export default function Canvas() {
       width: 0,
       height: 0,
       points: [worldCoords],
-      strokeColor: '#000000',
+      strokeColor: strokeColor,
       strokeWidth: 3
     };
 
