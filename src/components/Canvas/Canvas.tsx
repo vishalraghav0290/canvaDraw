@@ -129,13 +129,21 @@ export default function Canvas() {
         isSpacePressed.current = true;
         if (canvasRef.current) canvasRef.current.style.cursor = 'grab';
       }
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        const { selectedElementId, deleteElement } = useCanvasStore.getState();
+        if (selectedElementId) {
+          deleteElement(selectedElementId);
+        }
+      }
     };
+
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
         isSpacePressed.current = false;
         if (canvasRef.current) canvasRef.current.style.cursor = 'default';
       }
     };
+
 
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);

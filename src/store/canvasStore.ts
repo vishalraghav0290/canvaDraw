@@ -20,6 +20,7 @@ interface CanvasStore {
   currentElement: CanvasElement | null;
   currentTool: 'freehand' | 'rectangle' | 'ellipse' | 'pan' | 'select';
   selectedElementId: string | null;
+  deleteElement: (id: string) => void
   updateElement: (id: string, newElement: CanvasElement) => void;
 
 
@@ -40,6 +41,11 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
   currentTool: 'freehand',
   selectedElementId: null,
   setSelectedElementId: (id) => set({ selectedElementId: id }),
+
+  deleteElement: (id) => set((state) => ({
+    elements: state.elements.filter((el) => el.id !== id),
+    selectedElementId: null // this is because we need to clear the selected item what fillter do filrtaration not delation 
+  })),
 
   updateElement: (id, newElement) => set((state) => ({
     elements: state.elements.map((el) => el.id === id ? newElement : el)
