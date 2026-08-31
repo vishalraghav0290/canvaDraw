@@ -11,6 +11,7 @@ export default function Canvas() {
   const lastPanPosition = useRef({ x: 0, y: 0 });
   const lastMousePos = useRef({ x: 0, y: 0 });
   const isResizing = useRef(false);
+  const activeTextarea = useRef<HTMLTextAreaElement | null>(null); // vanilla DOM text input
 
   const elements = useCanvasStore((state) => state.elements);
   const currentElement = useCanvasStore((state) => state.currentElement);
@@ -18,6 +19,104 @@ export default function Canvas() {
 
   const cameraOffset = useCameraCanavasState((state) => state.cameraOffset);
   const cameraZoom = useCameraCanavasState((state) => state.cameraZoom);
+
+  // Creates a real textarea element on document.body (bypasses React render cycle)
+  const spawnTextInput = (screenX: number, screenY: number, worldX: number, worldY: number) => {
+    // Remove any existing text input first
+    if (activeTextarea.current) {
+      activeTextarea.current.remove();
+      activeTextarea.current = null;
+    }
+
+    const { cameraZoom } = useCameraCanavasState.getState();
+    const { strokeColor } = useCanvasStore.getState();
+    const fontSize = Math.round(24 * cameraZoom);
+
+    const ta = document.createElement('textarea');
+    ta.rows = 1;
+
+    // Auto-resize as user types
+    const autoResize = () => {
+      ta.style.height = 'auto';
+      ta.style.height = `${ta.scrollHeight}px`;
+      ta.style.width = 'auto';
+      // Grow width based on longest line
+      const lines = ta.value.split('\n');
+      const longestLine = lines.reduce((a, b) => a.length > b.length ? a : b, '');
+      // Measure text width using a canvas context
+      const tmpCtx = document.createElement('canvas').getContext('2d');
+      if (tmpCtx) {
+        tmpCtx.font = `${fontSize}px sans-serif`;
+        const measuredWidth = tmpCtx.measureText(longestLine || ' ').width;
+        ta.style.width = `${Math.max(measuredWidth + 4, 4)}px`;
+      }
+    };
+
+    Object.assign(ta.style, {
+      position: 'fixed',
+      left: `${screenX}px`,
+      top: `${screenY}px`,
+      width: '4px',          // Start tiny, expands as you type
+      height: `${fontSize * 1.4}px`,
+      fontSize: `${fontSize}px`,
+      fontFamily: 'sans-serif',
+      lineHeight: '1.4',
+      color: strokeColor,
+      background: 'transparent',
+      border: 'none',
+      outline: 'none',
+      padding: '0',
+      margin: '0',
+      resize: 'none',
+      overflow: 'hidden',
+      whiteSpace: 'pre',
+      zIndex: '99999',
+      caretColor: strokeColor,
+      wordBreak: 'keep-all',
+    });
+
+    ta.addEventListener('input', autoResize);
+
+    ta.addEventListener('blur', () => {
+      const val = ta.value.trim();
+      if (val) {
+        useCanvasStore.getState().addElement({
+          id: Date.now().toString(),
+          type: 'text',
+          x: worldX,
+          y: worldY,
+          width: 0,
+          height: 0,
+          points: [],
+          strokeColor: useCanvasStore.getState().strokeColor,
+          strokeWidth: 3,
+          text: val,
+          fontSize: '24',
+        });
+      }
+      ta.remove();
+      activeTextarea.current = null;
+    });
+
+    ta.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        ta.remove();
+        activeTextarea.current = null;
+        e.preventDefault();
+      }
+      // Stop canvas shortcuts (delete, space) from firing while typing
+      e.stopPropagation();
+      // Allow auto-resize on next tick after keydown
+      setTimeout(autoResize, 0);
+    });
+
+    ta.addEventListener('pointerdown', (e) => e.stopPropagation());
+    ta.addEventListener('mousedown', (e) => e.stopPropagation());
+
+    document.body.appendChild(ta);
+    activeTextarea.current = ta;
+    setTimeout(() => ta.focus(), 0);
+  };
 
   const drawShape = (ctx: CanvasRenderingContext2D, element: CanvasElement) => {
     ctx.beginPath();
@@ -40,6 +139,17 @@ export default function Canvas() {
       const cx = element.x + element.width / 2;
       const cy = element.y + element.height / 2;
       ctx.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
+    }
+    else if (element.type === 'text') {
+      ctx.font = `${element.fontSize || 24}px sans-serif`;
+      ctx.fillStyle = element.strokeColor || '#000000';
+      ctx.textBaseline = 'top';
+      const lines = (element.text || '').split('\n');
+      const lineHeight = Number(element.fontSize || 24) * 1.2;
+      lines.forEach((line, index) => {
+        ctx.fillText(line, element.x, element.y + index * lineHeight);
+      });
+      return;
     }
     ctx.stroke();
   };
@@ -125,6 +235,9 @@ export default function Canvas() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept keypresses while the text input textarea is focused
+      if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') return;
+
       if (e.code === 'Space' && !isSpacePressed.current) {
         isSpacePressed.current = true;
         if (canvasRef.current) canvasRef.current.style.cursor = 'grab';
@@ -138,12 +251,12 @@ export default function Canvas() {
     };
 
     const onKeyUp = (e: KeyboardEvent) => {
+      if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') return;
       if (e.code === 'Space') {
         isSpacePressed.current = false;
         if (canvasRef.current) canvasRef.current.style.cursor = 'default';
       }
     };
-
 
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
@@ -176,6 +289,7 @@ export default function Canvas() {
       if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing';
       return;
     }
+
 
     const { cameraOffset, cameraZoom } = useCameraCanavasState.getState();
     const worldCoords = getScreenToWorld(e.nativeEvent.offsetX, e.nativeEvent.offsetY, cameraOffset, cameraZoom);
@@ -211,7 +325,6 @@ export default function Canvas() {
           break;
         }
       }
-
       setSelectedElementId(foundId);
       // If we clicked a shape, start dragging
       if (foundId) {
@@ -222,9 +335,15 @@ export default function Canvas() {
       return; // Stop here so we don't start drawing a new shape
     }
 
+    if (currentTool === 'text') {
+      console.log('[TEXT] spawning vanilla textarea at screen:', e.clientX, e.clientY);
+      spawnTextInput(e.clientX, e.clientY, worldCoords.x, worldCoords.y);
+      return;
+    }
+
     const newElement: CanvasElement = {
       id: Date.now().toString(),
-      type: currentTool as 'freehand' | 'rectangle' | 'ellipse' | 'line',
+      type: currentTool as 'freehand' | 'rectangle' | 'ellipse' | 'line' | 'text',
       x: worldCoords.x,
       y: worldCoords.y,
       width: 0,
@@ -350,13 +469,15 @@ export default function Canvas() {
   };
 
   return (
-    <canvas
-      ref={canvasRef}
-      onPointerDown={startDrawing}
-      onPointerMove={draw}
-      onPointerUp={stopDrawing}
-      onPointerOut={stopDrawing}
-      style={{ display: 'block', touchAction: 'none' }}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        onPointerDown={startDrawing}
+        onPointerMove={draw}
+        onPointerUp={stopDrawing}
+        onPointerOut={stopDrawing}
+        style={{ display: 'block', touchAction: 'none' }}
+      />
+    </>
   );
 }

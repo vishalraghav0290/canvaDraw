@@ -10,7 +10,18 @@ export const getElementBounds = (el: CanvasElement) => {
             minY: Math.min(...ys),
             maxY: Math.max(...ys)
         };
-    } else {
+    } else if (el.type === 'text') {
+        // Rough approximation of text width based on font size
+        const width = (el.text?.length || 0) * ((Number(el.fontSize) || 24) * 0.6);
+        const height = Number(el.fontSize) || 24;
+        return {
+            minX: el.x,
+            maxX: el.x + width,
+            minY: el.y,
+            maxY: el.y + height
+        };
+    }
+    else {
         // Math.min/max handles if the user drew the shape backwards (negative width/height)
         return {
             minX: Math.min(el.x, el.x + el.width),
@@ -19,6 +30,7 @@ export const getElementBounds = (el: CanvasElement) => {
             maxY: Math.max(el.y, el.y + el.height)
         };
     }
+
 };
 
 export const isPointInBounds = (x: number, y: number, bounds: ReturnType<typeof getElementBounds>) => {

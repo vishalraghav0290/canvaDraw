@@ -23,6 +23,16 @@ const drawShapeForExport = (ctx: CanvasRenderingContext2D, element: CanvasElemen
         const cx = element.x + element.width / 2;
         const cy = element.y + element.height / 2;
         ctx.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
+    } else if (element.type === 'text') {
+        ctx.font = `${element.fontSize || 24}px sans-serif`;
+        ctx.fillStyle = element.strokeColor || '#000000';
+        ctx.textBaseline = 'top';
+        const lines = (element.text || '').split('\n');
+        const lineHeight = Number(element.fontSize || 24) * 1.2;
+        lines.forEach((line, index) => {
+            ctx.fillText(line, element.x, element.y + index * lineHeight);
+        });
+        return;
     }
     ctx.stroke();
 };

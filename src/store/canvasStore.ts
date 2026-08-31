@@ -4,7 +4,7 @@ export type Point = { x: number; y: number };
 
 export type CanvasElement = {
   id: string;
-  type: 'freehand' | 'rectangle' | 'ellipse' | 'line';
+  type: 'freehand' | 'rectangle' | 'ellipse' | 'line' | 'text';
   points: Point[];
   x: number;
   y: number;
@@ -12,13 +12,15 @@ export type CanvasElement = {
   height: number;
   strokeColor: string;
   strokeWidth: number;
+  text?: string;
+  fontSize?: string;
 };
 
 interface CanvasStore {
   theme: 'light' | 'dark';
   elements: CanvasElement[];
   currentElement: CanvasElement | null;
-  currentTool: 'freehand' | 'rectangle' | 'ellipse' | 'pan' | 'select';
+  currentTool: 'freehand' | 'rectangle' | 'ellipse' | 'pan' | 'select' | 'text';
   selectedElementId: string | null;
   strokeColor: string,
   setStrokeColor: (color: string) => void;
@@ -30,7 +32,7 @@ interface CanvasStore {
   toggleTheme: () => void;
   setElements: (elements: CanvasElement[]) => void;
   setCurrentElement: (element: CanvasElement | null) => void;
-  setCurrentTool: (tool: 'freehand' | 'rectangle' | 'ellipse' | 'pan' | 'select') => void;
+  setCurrentTool: (tool: 'freehand' | 'rectangle' | 'ellipse' | 'pan' | 'select' | 'text') => void;
   addElement: (element: CanvasElement) => void;
   undo: () => void;
   clearCanvas: () => void;

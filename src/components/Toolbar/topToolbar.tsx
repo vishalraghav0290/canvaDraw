@@ -20,6 +20,7 @@ export default function TopBar() {
     { id: 'freehand', label: 'Draw', icon: '✏️' },
     { id: 'rectangle', label: 'Rect', icon: '⬜' },
     { id: 'ellipse', label: 'Ellipse', icon: '⭕' },
+    { id: 'text', label: 'T Text', icon: '' }
   ] as const;
 
   return (
@@ -28,7 +29,7 @@ export default function TopBar() {
       {tools.map((tool) => (
         <button
           key={tool.id}
-          onClick={() => setCurrentTool(tool.id)}
+          onClick={() => { console.log('[TOOLBAR] setCurrentTool:', tool.id); setCurrentTool(tool.id); }}
           className={`px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${currentTool === tool.id
             ? 'bg-blue-100 text-blue-700'
             : 'hover:bg-gray-100 text-gray-700'
