@@ -7,8 +7,12 @@
  *  • cookies       → strokeColor user preference (shared across tabs/subdomains, 30-day TTL)
  */
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-export type StoredElements = import('../store/canvasStore').CanvasElement[];
+import type { CanvasElement, CameraState } from '../types/canvas.types';
+
+// Re-export for convenience
+export type { CameraState };
+export type StoredElements = CanvasElement[];
+
 
 // ─── Cookie helpers ───────────────────────────────────────────────────────────
 function setCookie(name: string, value: string, days = 30) {
@@ -71,11 +75,7 @@ export function clearSavedCanvas() {
 const SS_CAMERA_KEY = 'tdc_camera';
 const SS_TOOL_KEY   = 'tdc_tool';
 
-export interface CameraState {
-  x: number;
-  y: number;
-  zoom: number;
-}
+
 
 export function saveCamera(state: CameraState) {
   try {

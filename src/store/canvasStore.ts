@@ -7,34 +7,26 @@ import {
   saveCamera, loadCamera,
 } from "../utils/storage";
 
-export type Point = { x: number; y: number };
-
-export type ToolType = 'freehand' | 'rectangle' | 'ellipse' | 'pan' | 'select' | 'text' | 'line' | 'eraser';
-
-export type CanvasElement = {
-  id: string;
-  type: 'freehand' | 'rectangle' | 'ellipse' | 'line' | 'text';
-  points: Point[];
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  strokeColor: string;
-  strokeWidth: number;
-  text?: string;
-  fontSize?: string;
-  fillColor?: string;
-  opacity?: number;
-  strokeStyle?: 'solid' | 'dashed' | 'dotted';
-  fontFamily?: 'handwritten' | 'normal' | 'code' | 'serif';
-  textAlign?: 'left' | 'center' | 'right';
-};
+// All shared types live in one place
+export type {
+  Point,
+  ToolType,
+  CanvasElement,
+  StrokeStyle,
+  FontFamily,
+  TextFontSize,
+  TextAlign,
+  Theme,
+  CameraState,
+} from "../types/canvas.types";
+import type { ToolType, CanvasElement } from "../types/canvas.types";
 
 // ─── Load persisted values on app boot ────────────────────────────────────────
-const _savedTheme   = loadTheme();
-const _savedTool    = loadCurrentTool() as ToolType;
-const _savedStroke  = loadStrokeColor(_savedTheme);
-const _savedEls     = loadElements();
+const _savedTheme  = loadTheme();
+const _savedTool   = loadCurrentTool() as ToolType;
+const _savedStroke = loadStrokeColor(_savedTheme);
+const _savedEls    = loadElements();
+
 
 // ─── Canvas Store ─────────────────────────────────────────────────────────────
 interface CanvasStore {
