@@ -149,10 +149,10 @@ const Layers = () => {
 const FontFamily = () => {
     const { fontFamily, setFontFamily } = useCanvasStore();
     const fonts = [
-        { id: 'handwritten', label: '✏', title: 'Handwritten', style: 'cursive' },
-        { id: 'normal', label: 'A', title: 'Normal', style: 'sans-serif' },
-        { id: 'code', label: '<>', title: 'Code', style: 'monospace' },
-        { id: 'serif', label: 'Ꞗ', title: 'Serif', style: 'serif' },
+        { id: 'handwritten', label: 'M', title: 'Handwritten', style: 'cursive' },
+        { id: 'normal', label: 'M', title: 'Normal', style: 'sans-serif' },
+        { id: 'code', label: 'M', title: 'Code', style: 'monospace' },
+        { id: 'serif', label: 'M', title: 'Serif', style: 'serif' },
     ] as const;
     return (
         <div>
