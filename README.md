@@ -1,76 +1,34 @@
-# React + TypeScript + Vite
+# NexBoard: Built by Hand, Not by AI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+I built this project with a very specific, bold goal in mind: to prove my raw capabilities as a developer and land a **15 LPA engineering role**.
 
-Currently, two official plugins are available:
+In an industry increasingly reliant on auto-generated code, I wanted to step back and do this the hard way. I am incredibly proud to say that **every single line of code in this project was written by me, without the help of AI assistants.** From the database schemas to the UI styling, it is 100% my own problem-solving.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## What is NexBoard?
+NexBoard is a 2D canvas that allows you to freely **sketch** on an infinite canvas, so you can expand as much as you need. We do not store any of your data; everything remains completely private and is saved directly to your local storage. We also implemented a complete **heat detection algorithm** to track sketch overlays. I am always open to feedback to improve this project, so please reach out to me on [LinkedIn](https://www.google.com/search?q=https://www.linkedin.com/in/vishal-raghav-747a61251/).
 
-## React Compiler
+## The Tech Stack
+*   **Frontend:** React, Tailwind CSS
+*   **Version Control:** Git & GitHub
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Running it Locally
 
-## Expanding the ESLint configuration
+```bash
+# Clone the repository
+git clone [https://github.com/vishalraghav0290/NexBoard.git](https://github.com/vishalraghav0290/NexBoard.git)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+# Navigate into the directory
+cd NexBoard
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# Install dependencies
+npm install
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Start the application
+npm start
 
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Why I Built This
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+I wanted to build something substantial that genuinely reflects my deep understanding of the MERN stack. It’s one thing to know how to prompt an AI; it’s another to debug, structure, and deploy a full-stack application completely from scratch. This project is proof of the latter.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
-# canvaDraw
